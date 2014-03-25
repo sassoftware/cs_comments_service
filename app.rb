@@ -86,6 +86,7 @@ DEFAULT_PER_PAGE = 20
 
 if RACK_ENV.to_s != "test" # disable api_key auth in test environment
   before do
+    pass if request.path_info == '/heartbeat'
     api_key = CommentService.config[:api_key]
     error 401 unless params[:api_key] == api_key or env["HTTP_X_EDX_API_KEY"] == api_key
   end
@@ -189,10 +190,13 @@ get '/heartbeat' do
     error 500, res.to_json
   end
 
+  total_posts = db[:contents].find.count
+  total_users = db[:users].find.count
+
   status = {
-    "last_post_created" => db[:contents].find().sort(_id: -1).limit(1).one["created_at"],
-    "total_posts" => db[:contents].find.count,
-    "total_users" => db[:contents].find.count,
+    "last_post_created" => total_posts > 0 ? db[:contents].find().sort(_id: -1).limit(1).one["created_at"] : nil,
+    "total_posts" => total_posts,
+    "total_users" => total_users,
     "elapsed_time" => Time.now - t1
   }
   JSON.generate(status)
